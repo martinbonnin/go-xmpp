@@ -18,8 +18,8 @@ const (
 
 // xep-0045 7.2
 func (c *Client) JoinMUC(jid string) {
-	fmt.Fprintf(c.conn, "<presence to='%s'>\n"+
-		"<x xmlns='%s' />\n"+
+	fmt.Fprintf(c.conn, "<presence to='%s' id='99'>\n"+
+		"<x xmlns='%s'><history maxchars=\"0\" maxstanzas=\"0\" /></x>\n"+
 		"</presence>",
 		xmlEscape(jid), nsMUC)
 }

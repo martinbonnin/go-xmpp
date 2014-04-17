@@ -32,11 +32,12 @@ import (
 )
 
 const (
-	nsStream = "http://etherx.jabber.org/streams"
-	nsTLS    = "urn:ietf:params:xml:ns:xmpp-tls"
-	nsSASL   = "urn:ietf:params:xml:ns:xmpp-sasl"
-	nsBind   = "urn:ietf:params:xml:ns:xmpp-bind"
-	nsClient = "jabber:client"
+	nsStream  = "http://etherx.jabber.org/streams"
+	nsTLS     = "urn:ietf:params:xml:ns:xmpp-tls"
+	nsSASL    = "urn:ietf:params:xml:ns:xmpp-sasl"
+	nsBind    = "urn:ietf:params:xml:ns:xmpp-bind"
+	nsSession = "urn:ietf:params:xml:ns:xmpp-session"
+	nsClient  = "jabber:client"
 )
 
 var DefaultConfig tls.Config
@@ -342,8 +343,7 @@ func (c *Client) init(o *Options) error {
 		return errors.New("expected <stream>, got <" + se.Name.Local + "> in " + se.Name.Space)
 	}
 	if err = c.p.DecodeElement(&f, nil); err != nil {
-		// TODO: often stream stop.
-		//return os.NewError("unmarshal <features>: " + err.String())
+		return errors.New("unmarshal <features>: " + err.Error())
 	}
 
 	// Send IQ message asking to bind to the local user name.
@@ -352,6 +352,11 @@ func (c *Client) init(o *Options) error {
 	} else {
 		fmt.Fprintf(c.conn, "<iq type='set' id='x'><bind xmlns='%s'><resource>%s</resource></bind></iq>\n", nsBind, o.Resource)
 	}
+	fmt.Printf("Session=%v Bind=%v\n", f.Session, f.Bind)
+	if &f.Session != nil {
+		fmt.Fprintf(c.conn, "<iq type='set' id='sess_1'><session xmlns='%s'></session></iq>\n", nsSession)
+	}
+
 	var iq clientIQ
 	if err = c.p.DecodeElement(&iq, nil); err != nil {
 		return errors.New("unmarshal <iq>: " + err.Error())
@@ -362,7 +367,7 @@ func (c *Client) init(o *Options) error {
 	c.jid = iq.Bind.Jid // our local id
 
 	// We're connected and can now receive and send messages.
-	fmt.Fprintf(c.conn, "<presence xml:lang='en'><show>xa</show><status>I for one welcome our new codebot overlords.</status></presence>")
+	//fmt.Fprintf(c.conn, "<presence xml:lang='en'><show>xa</show><status>I for one welcome our new codebot overlords.</status></presence>")
 	return nil
 }
 
@@ -409,13 +414,17 @@ func (c *Client) SendOrg(org string) {
 	fmt.Fprint(c.conn, org)
 }
 
+type sessionSession struct {
+	XMLName xml.Name `xml:"urn:ietf:params:xml:ns:xmpp-session session"`
+}
+
 // RFC 3920  C.1  Streams name space
 type streamFeatures struct {
 	XMLName    xml.Name `xml:"http://etherx.jabber.org/streams features"`
 	StartTLS   tlsStartTLS
 	Mechanisms saslMechanisms
 	Bind       bindBind
-	Session    bool
+	Session    sessionSession
 }
 
 type streamError struct {
